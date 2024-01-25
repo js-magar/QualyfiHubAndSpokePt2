@@ -21,5 +21,5 @@ jobs:
                 inlineScript: |
                   az deployment group create \
                   --resource-group ResourceGroupName \
-                  --template-file biceptemplates/main.bicep \
-                  --parameters param1=param1
+                  --template-file biceptemplate/main.bicep \
+                  --parameters biceptemplate/parameters.bicepparam
