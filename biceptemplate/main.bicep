@@ -38,7 +38,7 @@ param devTag object
 param coreServicesTag object
 
 var CoreSecVaultName='keyvaultname'
-
+var RandString='jash'
 //Hub
 var GatewaySubnetAddress = '${hubVnetAddressPrefix}.1.0/24'
 var AppgwSubnetAddress = '${hubVnetAddressPrefix}.2.0/24'
@@ -54,7 +54,7 @@ var kvSubnetAddress = '${coreVnetAddressPrefix}.2.0/24'
 var appServiceSubnetName ='AppSubnet'
 var SQLServerSubnetName ='SqlSubnet'
 var SASubnetName ='StSubnet'
-
+var prodOrDev = ['prod','dev']
 
 //KV
 //resource keyVault 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
@@ -345,8 +345,6 @@ module encryptKVPrivateDnsZone 'br/public:avm/res/network/private-dns-zone:0.2.3
     tags:coreServicesTag
   }
 }
-
-
 //Route Table
 module routeTable 'br/public:avm/res/network/route-table:0.2.1' = {
   name:'routeTable'
@@ -391,3 +389,19 @@ module routeTable 'br/public:avm/res/network/route-table:0.2.1' = {
   }
 }
 
+//Spokes
+//condition ? valueIfTrue : valueIfFalse
+module appServicePlan 'br/public:avm/res/web/serverfarm:0.1.0' = [for spokeType in prodOrDev: {
+  name: '${spokeType}AppServiceDeployment'
+  params:{
+    name: (spokeType=='prod') ? prodAppServicePlanName : devAppServicePlanName
+    location:location
+    reserved:true
+    tags:(spokeType=='prod') ? prodTag : devTag
+    kind: 'Linux'
+    sku:{
+      name: 'B1'
+      tier : 'Basic'
+    }
+  }
+}]
