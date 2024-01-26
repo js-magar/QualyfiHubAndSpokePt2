@@ -56,7 +56,7 @@ var SQLServerSubnetName ='SqlSubnet'
 var SASubnetName ='StSubnet'
 var prodOrDev = [0,1] //[prod,dev]
 var adminUsername='username'
-var adminPassword='password'
+var adminPassword='ExamplePassword2002?'
 var SQLServerSku = 'Basic'
 var devSQLServerName = 'sql-dev-${location}-001-${RandString}'
 var prodSQLServerName = 'sql-prod-${location}-001-${RandString}'
@@ -433,7 +433,7 @@ module appService 'br/public:avm/res/web/site:0.2.0' =  [for spokeType in prodOr
     name:(spokeType==0) ? prodAppServiceName : devAppServiceName
     kind:'app'
     serverFarmResourceId: appServicePlan[spokeType].outputs.resourceId
-    appInsightResourceId:applicationInsights[spokeType].id
+    appInsightResourceId:applicationInsights[spokeType].outputs.resourceId
     diagnosticSettings:[
       {
         //eventHubAuthorizationRuleResourceId: '<eventHubAuthorizationRuleResourceId>'
@@ -475,7 +475,6 @@ module appService 'br/public:avm/res/web/site:0.2.0' =  [for spokeType in prodOr
         privateDnsZoneResourceIds: [
           appServicePrivateDnsZone.outputs.resourceId
         ]
-        service:'app'
         subnetResourceId: (spokeType==0) ? prodVnet.outputs.subnetResourceIds[0] : devVnet.outputs.subnetResourceIds[0]
       }
     ]
@@ -502,6 +501,7 @@ module sqlServer 'br/public:avm/res/sql/server:0.1.5' = [for spokeType in prodOr
         skuName:SQLServerSku
         skuTier:SQLServerSku
         name: (spokeType==0) ? prodSQLDatabaseName : devSQLDatabaseName
+        maxSizeBytes:2147483648 //Must be exactly 2GB
       }
     ]
     privateEndpoints: [
