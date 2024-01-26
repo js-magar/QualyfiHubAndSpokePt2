@@ -37,11 +37,26 @@ param devTag object
 param coreServicesTag object
 
 
-//rsv
-
+//RSV
+module recoveryServiceVaults 'br:bicep/modules/recovery-services.vault:1.0.0' = {
+  name:recoveryServiceVaultName
+  params: {
+    location:location
+    tags:coreServicesTag
+    publicNetworkAccess:'Disabled'
+  }
+}
 //log analytics
+module logAnalyticsWorkspace 'br/public:storage/log-analytics-workspace:1.0.1' = {
+  name: 'logAnalyticsDeployment'
+  params: {
+    name: logAnalyticsWorkspaceName
+    location:location
+    tags:coreServicesTag
 
-//vnets
+  }
+}
+//Virtual Networks
 module coreVnet 'br/public:network/virtual-network:1.0.1' = {
   name: 'coreVNetDeployment'
   params: {
@@ -78,3 +93,122 @@ module prodVnet 'br/public:network/virtual-network:1.0.1' = {
     ]
   }
 }
+//DNS Zones
+module appServicePrivateDnsZone 'br/public:network/private-dns-zone:1.0.1' = {
+  name:'appServicePrivateDnsZone'
+  params: {
+    name: 'privatelink.azurewebsites.net'
+    tags:coreServicesTag
+    location:location
+    virtualNetworkLinks: [
+      {
+        name: 'link-core'
+        location: 'global'
+        tags:coreServicesTag
+        registrationEnabled: false
+        virtualNetworkId: coreVnet.outputs.resourceId
+      }
+      {
+        name: 'link-dev'
+        location: 'global'
+        tags:coreServicesTag
+        registrationEnabled: false
+        virtualNetworkId: devVnet.outputs.resourceId
+      }
+      {
+        name: 'link-hub'
+        location: 'global'
+        tags: coreServicesTag
+        registrationEnabled: false
+        virtualNetworkId: hubVnet.outputs.resourceId
+      }
+      {
+        name: 'link-prod'
+        location: 'global'
+        tags: coreServicesTag
+        registrationEnabled: false
+        virtualNetworkId: prodVnet.outputs.resourceId
+      }
+    ]
+  }
+}
+module sqlPrivateDnsZone 'br/public:network/private-dns-zone:1.0.1' = {
+  name:'sqlPrivateDnsZone'
+  params: {
+    name: 'privatelink${environment().suffixes.sqlServerHostname}'
+    tags:coreServicesTag
+    location:location
+    virtualNetworkLinks: [
+      {
+        name: 'link-core'
+        location: 'global'
+        tags:coreServicesTag
+        registrationEnabled: false
+        virtualNetworkId: coreVnet.outputs.resourceId
+      }
+      {
+        name: 'link-dev'
+        location: 'global'
+        tags:coreServicesTag
+        registrationEnabled: false
+        virtualNetworkId: devVnet.outputs.resourceId
+      }
+      {
+        name: 'link-hub'
+        location: 'global'
+        tags: coreServicesTag
+        registrationEnabled: false
+        virtualNetworkId: hubVnet.outputs.resourceId
+      }
+      {
+        name: 'link-prod'
+        location: 'global'
+        tags: coreServicesTag
+        registrationEnabled: false
+        virtualNetworkId: prodVnet.outputs.resourceId
+      }
+    ]
+  }
+}
+module storageAccountPrivateDnsZone 'br/public:network/private-dns-zone:1.0.1' = {
+  name:'storageAccountPrivateDnsZone'
+  params: {
+    name: 'privatelink.blob.${environment().suffixes.storage}'
+    tags:coreServicesTag
+    location:location
+    virtualNetworkLinks: [
+      {
+        name: 'link-core'
+        location: 'global'
+        tags:coreServicesTag
+        registrationEnabled: false
+        virtualNetworkId: coreVnet.outputs.resourceId
+      }
+      {
+        name: 'link-hub'
+        location: 'global'
+        tags: coreServicesTag
+        registrationEnabled: false
+        virtualNetworkId: hubVnet.outputs.resourceId
+      }
+      {
+        name: 'link-prod'
+        location: 'global'
+        tags: coreServicesTag
+        registrationEnabled: false
+        virtualNetworkId: prodVnet.outputs.resourceId
+      }
+    ]
+  }
+}
+module encryptKVPrivateDnsZone 'br/public:network/private-dns-zone:1.0.1' = {
+  name:'encryptKVPrivateDnsZone'
+  params: {
+    name: 'privatelink${environment().suffixes.keyvaultDns}'
+    tags:coreServicesTag
+    location:location
+  }
+}
+
+
+
