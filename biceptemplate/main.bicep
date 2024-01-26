@@ -24,6 +24,7 @@ param prodVnetAddressPrefix string
 param devVnetAddressPrefix string
 param coreVnetAddressPrefix string
 param hubVnetAddressPrefix string
+
 param prodVnetAddress string
 param devVnetAddress string
 param coreVnetAddress string
@@ -36,9 +37,32 @@ param prodTag object
 param devTag object
 param coreServicesTag object
 
+var CoreSecVaultName='keyvaultname'
 
+//Hub
+var GatewaySubnetAddress = '${hubVnetAddressPrefix}.1.0/24'
+var AppgwSubnetAddress = '${hubVnetAddressPrefix}.2.0/24'
+var AzureFirewallSubnetAddress = '${hubVnetAddressPrefix}.3.0/24'
+var AzureBastionSubnetAddress = '${hubVnetAddressPrefix}.4.0/24'
+var AzureFirewallPrivateIP ='${hubVnetAddressPrefix}.3.4'
+//Core
+var vmSubetName = 'VMSubnet'
+var kvSubetName = 'KVSubnet'
+var vmSubnetAddress = '${coreVnetAddressPrefix}.1.0/24'
+var kvSubnetAddress = '${coreVnetAddressPrefix}.2.0/24'
+//Spoke
+var appServiceSubnetName ='AppSubnet'
+var SQLServerSubnetName ='SqlSubnet'
+var SASubnetName ='StSubnet'
+
+
+//KV
+//resource keyVault 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
+//  name: CoreSecVaultName
+//}
 //RSV
-module recoveryServiceVaults 'br:bicep/modules/recovery-services.vault:1.0.0' = {
+/*
+module recoveryServiceVaults 'br:bicep/modules/recovery-services.vault:1.0.0' = { //CARML
   name:recoveryServiceVaultName
   params: {
     location:location
@@ -46,8 +70,9 @@ module recoveryServiceVaults 'br:bicep/modules/recovery-services.vault:1.0.0' = 
     publicNetworkAccess:'Disabled'
   }
 }
+*/
 //log analytics
-module logAnalyticsWorkspace 'br/public:storage/log-analytics-workspace:1.0.1' = {
+module logAnalyticsWorkspace 'br/public:storage/log-analytics-workspace:1.0.1' = { //MODULES
   name: 'logAnalyticsDeployment'
   params: {
     name: logAnalyticsWorkspaceName
@@ -56,159 +81,313 @@ module logAnalyticsWorkspace 'br/public:storage/log-analytics-workspace:1.0.1' =
 
   }
 }
-//Virtual Networks
-module coreVnet 'br/public:network/virtual-network:1.0.1' = {
-  name: 'coreVNetDeployment'
+//NSG
+module defaultNSG 'br/public:avm/res/network/network-security-group:0.1.2' = {
+  name: DefaultNSGName
   params: {
-    name: coreVnetName
-    addressPrefixes: [
-      coreVnetAddress
-    ]
+    name: DefaultNSGName
+    location:location
+    tags:coreServicesTag
   }
 }
-module hubVnet 'br/public:network/virtual-network:1.0.1' = {
+//Virtual Networks
+module hubVnet 'br/public:avm/res/network/virtual-network:0.1.1' = {
   name: 'hubVNetDeployment'
   params: {
     name: hubVnetName
     addressPrefixes: [
       hubVnetAddress
     ]
+    subnets: [
+      {
+        name: GatewaySubnetName
+        addressPrefix: GatewaySubnetAddress
+      }
+      {
+        name: AppgwSubnetName
+        addressPrefix: AppgwSubnetAddress
+      }
+      {
+        name: AzureFirewallSubnetName
+        addressPrefix: AzureFirewallSubnetAddress
+      }
+      {
+        name: AzureBastionSubnetName
+        addressPrefix: AzureBastionSubnetAddress
+      }
+    ]
   }
 }
-module devVnet 'br/public:network/virtual-network:1.0.1' = {
+module coreVnet 'br/public:avm/res/network/virtual-network:0.1.1' = {
+  name: 'coreVNetDeployment'
+  params: {
+    name: coreVnetName
+    addressPrefixes: [
+      coreVnetAddress
+    ]
+    peerings:[
+      {
+        allowForwardedTraffic: true
+        allowGatewayTransit: true
+        allowVirtualNetworkAccess: true
+        remotePeeringAllowForwardedTraffic: true
+        remotePeeringAllowVirtualNetworkAccess: true
+        remotePeeringEnabled: true
+        remotePeeringName: 'core-to-hub'
+        remoteVirtualNetworkId: hubVnet.outputs.resourceId
+        //useRemoteGateways: false
+      }
+    ]
+    subnets: [
+      {
+        name: vmSubetName 
+        addressPrefix: vmSubnetAddress
+        networkSecurityGroup:{  id: defaultNSG.outputs.resourceId }
+        //routeTable:{id:routeTable.outputs.resourceId}
+      }
+      {
+        name: kvSubetName
+        addressPrefix: kvSubnetAddress
+        networkSecurityGroup:{  id: defaultNSG.outputs.resourceId }
+        //routeTable:{id:routeTable.outputs.resourceId}
+      }
+    ]
+  }
+}
+module devVnet 'br/public:avm/res/network/virtual-network:0.1.1' = {
   name: 'devVNetDeployment'
   params: {
     name: devVnetName
     addressPrefixes: [
       devVnetAddress
     ]
+    peerings:[
+      {
+        allowForwardedTraffic: true
+        allowGatewayTransit: true
+        allowVirtualNetworkAccess: true
+        remotePeeringAllowForwardedTraffic: true
+        remotePeeringAllowVirtualNetworkAccess: true
+        remotePeeringEnabled: true
+        remotePeeringName: 'dev-to-hub'
+        remoteVirtualNetworkId: hubVnet.outputs.resourceId
+        //useRemoteGateways: false
+      }
+    ]
+    subnets: [
+      {
+        name: appServiceSubnetName
+        addressPrefix: '${devVnetAddressPrefix}.1.0/24'
+        networkSecurityGroup:{  id: defaultNSG.outputs.resourceId }
+        //routeTable:{id:routeTable.outputs.resourceId}
+      }
+      {
+        name: SQLServerSubnetName
+        addressPrefix: '${devVnetAddressPrefix}.2.0/24'
+        networkSecurityGroup:{  id: defaultNSG.outputs.resourceId }
+        //routeTable:{id:routeTable.outputs.resourceId}
+      }
+    ]
   }
 }
-module prodVnet 'br/public:network/virtual-network:1.0.1' = {
+module prodVnet 'br/public:avm/res/network/virtual-network:0.1.1' = {
   name: 'prodVNetDeployment'
   params: {
     name: prodVnetName
     addressPrefixes: [
       prodVnetAddress
     ]
+    peerings:[
+      {
+        allowForwardedTraffic: true
+        allowGatewayTransit: true
+        allowVirtualNetworkAccess: true
+        remotePeeringAllowForwardedTraffic: true
+        remotePeeringAllowVirtualNetworkAccess: true
+        remotePeeringEnabled: true
+        remotePeeringName: 'prod-to-hub'
+        remoteVirtualNetworkId: hubVnet.outputs.resourceId
+        //useRemoteGateways: false
+      }
+    ]
+    subnets: [
+      {
+        name: appServiceSubnetName
+        addressPrefix: '${prodVnetAddressPrefix}.1.0/24'
+        networkSecurityGroup:{  id: defaultNSG.outputs.resourceId }
+        //routeTable:{id:routeTable.outputs.resourceId}
+      }
+      {
+        name: SQLServerSubnetName
+        addressPrefix: '${prodVnetAddressPrefix}.2.0/24'
+        networkSecurityGroup:{  id: defaultNSG.outputs.resourceId }
+        //routeTable:{id:routeTable.outputs.resourceId}
+      }
+      {
+        name: SASubnetName
+        addressPrefix: '${prodVnetAddressPrefix}.3.0/24'
+        networkSecurityGroup:{  id: defaultNSG.outputs.resourceId }
+        //routeTable:{id:routeTable.outputs.resourceId}
+      }
+    ]
   }
 }
 //DNS Zones
-module appServicePrivateDnsZone 'br/public:network/private-dns-zone:1.0.1' = {
+module appServicePrivateDnsZone 'br/public:avm/res/network/private-dns-zone:0.2.3' = {
   name:'appServicePrivateDnsZone'
   params: {
     name: 'privatelink.azurewebsites.net'
     tags:coreServicesTag
-    location:location
     virtualNetworkLinks: [
       {
         name: 'link-core'
         location: 'global'
         tags:coreServicesTag
         registrationEnabled: false
-        virtualNetworkId: coreVnet.outputs.resourceId
+        virtualNetworkResourceId: coreVnet.outputs.resourceId
       }
       {
         name: 'link-dev'
         location: 'global'
         tags:coreServicesTag
         registrationEnabled: false
-        virtualNetworkId: devVnet.outputs.resourceId
+        virtualNetworkResourceId: devVnet.outputs.resourceId
       }
       {
         name: 'link-hub'
         location: 'global'
         tags: coreServicesTag
         registrationEnabled: false
-        virtualNetworkId: hubVnet.outputs.resourceId
+        virtualNetworkResourceId: hubVnet.outputs.resourceId
       }
       {
         name: 'link-prod'
         location: 'global'
         tags: coreServicesTag
         registrationEnabled: false
-        virtualNetworkId: prodVnet.outputs.resourceId
+        virtualNetworkResourceId: prodVnet.outputs.resourceId
       }
     ]
   }
 }
-module sqlPrivateDnsZone 'br/public:network/private-dns-zone:1.0.1' = {
+module sqlPrivateDnsZone 'br/public:avm/res/network/private-dns-zone:0.2.3' = {
   name:'sqlPrivateDnsZone'
   params: {
     name: 'privatelink${environment().suffixes.sqlServerHostname}'
     tags:coreServicesTag
-    location:location
     virtualNetworkLinks: [
       {
         name: 'link-core'
         location: 'global'
         tags:coreServicesTag
         registrationEnabled: false
-        virtualNetworkId: coreVnet.outputs.resourceId
+        virtualNetworkResourceId: coreVnet.outputs.resourceId
       }
       {
         name: 'link-dev'
         location: 'global'
         tags:coreServicesTag
         registrationEnabled: false
-        virtualNetworkId: devVnet.outputs.resourceId
+        virtualNetworkResourceId: devVnet.outputs.resourceId
       }
       {
         name: 'link-hub'
         location: 'global'
         tags: coreServicesTag
         registrationEnabled: false
-        virtualNetworkId: hubVnet.outputs.resourceId
+        virtualNetworkResourceId: hubVnet.outputs.resourceId
       }
       {
         name: 'link-prod'
         location: 'global'
         tags: coreServicesTag
         registrationEnabled: false
-        virtualNetworkId: prodVnet.outputs.resourceId
+        virtualNetworkResourceId: prodVnet.outputs.resourceId
       }
     ]
   }
 }
-module storageAccountPrivateDnsZone 'br/public:network/private-dns-zone:1.0.1' = {
+module storageAccountPrivateDnsZone 'br/public:avm/res/network/private-dns-zone:0.2.3' = {
   name:'storageAccountPrivateDnsZone'
   params: {
     name: 'privatelink.blob.${environment().suffixes.storage}'
     tags:coreServicesTag
-    location:location
     virtualNetworkLinks: [
       {
         name: 'link-core'
         location: 'global'
         tags:coreServicesTag
         registrationEnabled: false
-        virtualNetworkId: coreVnet.outputs.resourceId
+        virtualNetworkResourceId: coreVnet.outputs.resourceId
       }
       {
         name: 'link-hub'
         location: 'global'
         tags: coreServicesTag
         registrationEnabled: false
-        virtualNetworkId: hubVnet.outputs.resourceId
+        virtualNetworkResourceId: hubVnet.outputs.resourceId
       }
       {
         name: 'link-prod'
         location: 'global'
         tags: coreServicesTag
         registrationEnabled: false
-        virtualNetworkId: prodVnet.outputs.resourceId
+        virtualNetworkResourceId: prodVnet.outputs.resourceId
       }
     ]
   }
 }
-module encryptKVPrivateDnsZone 'br/public:network/private-dns-zone:1.0.1' = {
+
+module encryptKVPrivateDnsZone 'br/public:avm/res/network/private-dns-zone:0.2.3' = {
   name:'encryptKVPrivateDnsZone'
   params: {
     name: 'privatelink${environment().suffixes.keyvaultDns}'
     tags:coreServicesTag
-    location:location
   }
 }
 
 
+//Route Table
+module routeTable 'br/public:avm/res/network/route-table:0.2.1' = {
+  name:'routeTable'
+  params:{
+    name: 'routetable-${location}-001'
+    location: location
+    tags:hubTag
+    routes: [
+      {
+        name: 'defaultRoute'
+        properties: {
+          addressPrefix: '0.0.0.0/0'
+          nextHopType:'VirtualAppliance'
+          nextHopIpAddress: AzureFirewallPrivateIP
+        }
+      }
+      {
+        name: 'core1Route'
+        properties: {
+          addressPrefix: coreVnetAddress
+          nextHopType:'VirtualAppliance'
+          nextHopIpAddress: AzureFirewallPrivateIP
+        }
+      }
+      {
+        name: 'dev1Route'
+        properties: {
+          addressPrefix: devVnetAddress
+          nextHopType:'VirtualAppliance'
+          nextHopIpAddress: AzureFirewallPrivateIP
+        }
+      }
+      {
+        name: 'prod1Route'
+        properties: {
+          addressPrefix: prodVnetAddress
+          nextHopType:'VirtualAppliance'
+          nextHopIpAddress: AzureFirewallPrivateIP
+        }
+      }
+    ]
+  }
+}
 

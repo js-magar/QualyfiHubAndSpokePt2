@@ -1,6 +1,7 @@
 using 'main.bicep'
 
-param location = 'westus' // This value must be provided.
+param location = 'eastus' // This value must be provided.
+//param location  = resourceGroup().location
 param name = 'jash' // This value is optional. Bicep will use default value if not provided.
 var RandString = 'jash'
 
