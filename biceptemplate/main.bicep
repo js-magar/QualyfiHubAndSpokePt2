@@ -54,7 +54,16 @@ var kvSubnetAddress = '${coreVnetAddressPrefix}.2.0/24'
 var appServiceSubnetName ='AppSubnet'
 var SQLServerSubnetName ='SqlSubnet'
 var SASubnetName ='StSubnet'
-var prodOrDev = ['prod','dev']
+var prodOrDev = [0,1] //[prod,dev]
+var adminUsername='username'
+var adminPassword='password'
+var SQLServerSku = 'Basic'
+var devSQLServerName = 'sql-dev-${location}-001-${RandString}'
+var prodSQLServerName = 'sql-prod-${location}-001-${RandString}'
+var devSQLDatabaseName = 'sqldb-dev-${location}-001-${RandString}'
+var prodSQLDatabaseName = 'sqldb-prod-${location}-001-${RandString}'
+var storageAccountName = 'stprod001${RandString}'
+var appServiceRepoURL = 'https://github.com/Azure-Samples/dotnetcore-docs-hello-world'
 
 //KV
 //resource keyVault 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
@@ -391,13 +400,26 @@ module routeTable 'br/public:avm/res/network/route-table:0.2.1' = {
 
 //Spokes
 //condition ? valueIfTrue : valueIfFalse
-module appServicePlan 'br/public:avm/res/web/serverfarm:0.1.0' = [for spokeType in prodOrDev: {
-  name: '${spokeType}AppServiceDeployment'
+//1=prod
+//AppServicePlan
+module applicationInsights 'br/public:avm/res/insights/component:0.1.2' = [for spokeType in prodOrDev: {
+  name:'${spokeType}appInsightsDeployment'
   params:{
-    name: (spokeType=='prod') ? prodAppServicePlanName : devAppServicePlanName
+    name:'${(spokeType==0) ? 'prod' : 'dev'}-${location}-aSInsights'
+    location:location
+    tags:(spokeType==0) ? prodTag : devTag
+    workspaceResourceId:logAnalyticsWorkspace.outputs.id
+    kind:'web'
+    applicationType: 'web'
+  }
+}]
+module appServicePlan 'br/public:avm/res/web/serverfarm:0.1.0' = [for spokeType in prodOrDev: {
+  name: '${spokeType}AppServicePlanDeployment'
+  params:{
+    name: (spokeType==0) ? prodAppServicePlanName : devAppServicePlanName
     location:location
     reserved:true
-    tags:(spokeType=='prod') ? prodTag : devTag
+    tags:(spokeType==0) ? prodTag : devTag
     kind: 'Linux'
     sku:{
       name: 'B1'
@@ -405,3 +427,114 @@ module appServicePlan 'br/public:avm/res/web/serverfarm:0.1.0' = [for spokeType 
     }
   }
 }]
+module appService 'br/public:avm/res/web/site:0.2.0' =  [for spokeType in prodOrDev: {
+  name: '${spokeType}AppServiceDeployment'
+  params:{
+    name:(spokeType==0) ? prodAppServiceName : devAppServiceName
+    kind:'app'
+    serverFarmResourceId: appServicePlan[spokeType].outputs.resourceId
+    appInsightResourceId:applicationInsights[spokeType].id
+    diagnosticSettings:[
+      {
+        //eventHubAuthorizationRuleResourceId: '<eventHubAuthorizationRuleResourceId>'
+        //eventHubName: '<eventHubName>'
+        metricCategories: [
+          {
+            category: 'AllMetrics'
+          }
+        ]
+        name: 'customSetting'
+        workspaceResourceId: logAnalyticsWorkspace.outputs.id
+      }
+    ]
+    siteConfig:{
+      linuxFxVersion:'DOTNETCORE|7.0'
+      appSettings:[
+        {
+          name:'APPINSIGHTS_INSTRUMENTATIONKEY'
+          value:applicationInsights[spokeType].outputs.instrumentationKey
+        }
+        /*
+        {
+          name:'APPLICATIONINSIGHTS_CONNECTION_STRING'
+          value:applicationInsights[spokeType].properties.ConnectionString
+        }*/
+        {
+          name:'ApplicationInsightsAgent_EXTENSION_VERSION'
+          value:'~3'
+        }
+        {
+          name:'XDT_MicrosoftApplicationInsights_Mode'
+          value:'default'
+        }
+      ]
+      alwaysOn:true
+    }
+    privateEndpoints: [
+      {
+        privateDnsZoneResourceIds: [
+          appServicePrivateDnsZone.outputs.resourceId
+        ]
+        service:'app'
+        subnetResourceId: (spokeType==0) ? prodVnet.outputs.subnetResourceIds[0] : devVnet.outputs.subnetResourceIds[0]
+      }
+    ]
+  }
+}]
+resource codeAppService 'Microsoft.Web/sites/sourcecontrols@2022-09-01' =[for spokeType in prodOrDev: {
+  name:(spokeType==0) ? '${prodAppServiceName}/web' : '${devAppServiceName}/web'
+  properties:{
+    repoUrl:appServiceRepoURL
+    isManualIntegration:true
+    branch:'master'
+  }
+}]
+//SQL
+module sqlServer 'br/public:avm/res/sql/server:0.1.5' = [for spokeType in prodOrDev: {
+  name:'${spokeType}SQLServer'
+  params:{
+    name: (spokeType==0) ? prodSQLServerName : devSQLServerName
+    administratorLogin:adminUsername
+    administratorLoginPassword:adminPassword
+    location:location
+    databases: [
+      {
+        skuName:SQLServerSku
+        skuTier:SQLServerSku
+        name: (spokeType==0) ? prodSQLDatabaseName : devSQLDatabaseName
+      }
+    ]
+    privateEndpoints: [
+      {
+        privateDnsZoneResourceIds: [
+          sqlPrivateDnsZone.outputs.resourceId
+        ]
+        service: 'sqlServer'
+        subnetResourceId: (spokeType==0) ? prodVnet.outputs.subnetResourceIds[1] : devVnet.outputs.subnetResourceIds[1]
+      }
+    ]
+  }
+}]
+module storageAccount 'br/public:avm/res/storage/storage-account:0.5.0' = {
+  name: 'storageAccountDeployment'
+  params: {
+    name: storageAccountName
+    skuName:'Standard_LRS'
+    kind:'StorageV2'
+    location:location
+    privateEndpoints: [
+      {
+        privateDnsZoneResourceIds: [
+          storageAccountPrivateDnsZone.outputs.resourceId
+        ]
+        service: 'blob'
+        subnetResourceId: prodVnet.outputs.subnetResourceIds[2]
+      }
+    ]
+  }
+}
+
+
+// Hub
+
+
