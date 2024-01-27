@@ -45,6 +45,8 @@ var AppgwSubnetAddress = '${hubVnetAddressPrefix}.2.0/24'
 var AzureFirewallSubnetAddress = '${hubVnetAddressPrefix}.3.0/24'
 var AzureBastionSubnetAddress = '${hubVnetAddressPrefix}.4.0/24'
 var AzureFirewallPrivateIP ='${hubVnetAddressPrefix}.3.4'
+var bastionPIPName ='pip-bastion-hub-${location}-001'
+var bastionName ='bastion-hub-${location}-001' 
 //Core
 var vmSubetName = 'VMSubnet'
 var kvSubetName = 'KVSubnet'
@@ -487,7 +489,7 @@ resource codeAppService 'Microsoft.Web/sites/sourcecontrols@2022-09-01' =[for sp
     isManualIntegration:true
     branch:'master'
   }
-}]
+}] //NEEDS TO BE CHANGE
 //SQL
 module sqlServer 'br/public:avm/res/sql/server:0.1.5' = [for spokeType in prodOrDev: {
   name:'${spokeType}SQLServer'
@@ -536,5 +538,19 @@ module storageAccount 'br/public:avm/res/storage/storage-account:0.5.0' = {
 
 
 // Hub
-
-
+//Bastion Code
+module bastionHost 'br/public:avm/res/network/bastion-host:0.1.1' = {
+  name:'bastionDeployment'
+  params:{
+    name: bastionName
+    vNetId:hubVnet.outputs.resourceId
+    location:location
+    tags:hubTag
+    publicIPAddressObject: {
+      allocationMethod: 'Static'
+      name: bastionPIPName
+      skuName: 'Standard'
+      tags: hubTag
+    }
+  }
+}
