@@ -37,6 +37,7 @@ param prodTag object
 param devTag object
 param coreServicesTag object
 
+var RG = resourceGroup().name
 var CoreSecVaultName='keyvaultname'
 var RandString='jash'
 //Hub
@@ -47,11 +48,23 @@ var AzureBastionSubnetAddress = '${hubVnetAddressPrefix}.4.0/24'
 var AzureFirewallPrivateIP ='${hubVnetAddressPrefix}.3.4'
 var bastionPIPName ='pip-bastion-hub-${location}-001'
 var bastionName ='bastion-hub-${location}-001' 
+var firewallPIPName = 'pip-firewall-hub-${location}-001'
+var firewallPolicyName ='firewallPolicy-hub-${location}-001' 
+var firewallRulesName ='firewallRules-hub-${location}-001'
+var appGatewayPIPName = 'pip-appGateway-hub-${location}-001'
+var appGatewayName = 'appGateway-hub-${location}-001'
+var appgw_id = resourceId('Microsoft.Network/applicationGateways','appGateway-hub-${location}-001')
 //Core
 var vmSubetName = 'VMSubnet'
 var kvSubetName = 'KVSubnet'
 var vmSubnetAddress = '${coreVnetAddressPrefix}.1.0/24'
 var kvSubnetAddress = '${coreVnetAddressPrefix}.2.0/24'
+var vmName ='vm-core-${location}-001'
+var vmSize = 'Standard_D2S_v3'
+var vmNICName = 'nic-core-${location}-001'
+var vmNICIP = '10.20.1.20'
+var vmComputerName = 'coreComputer'
+var CoreEncryptKeyVaultName = 'kv-encrypt-core-jash'
 //Spoke
 var appServiceSubnetName ='AppSubnet'
 var SQLServerSubnetName ='SqlSubnet'
@@ -66,6 +79,7 @@ var devSQLDatabaseName = 'sqldb-dev-${location}-001-${RandString}'
 var prodSQLDatabaseName = 'sqldb-prod-${location}-001-${RandString}'
 var storageAccountName = 'stprod001${RandString}'
 var appServiceRepoURL = 'https://github.com/Azure-Samples/dotnetcore-docs-hello-world'
+var storageAccountPrivateEndpointName ='private-endpoint-${storageAccountName}'
 
 //KV
 //resource keyVault 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
@@ -83,13 +97,13 @@ module recoveryServiceVaults 'br:bicep/modules/recovery-services.vault:1.0.0' = 
 }
 */
 //log analytics
-module logAnalyticsWorkspace 'br/public:storage/log-analytics-workspace:1.0.1' = { //MODULES
+module logAnalyticsWorkspace 'br/public:avm/res/operational-insights/workspace:0.3.1' = { //MODULES
   name: 'logAnalyticsDeployment'
   params: {
     name: logAnalyticsWorkspaceName
     location:location
     tags:coreServicesTag
-
+    useResourcePermissions: true
   }
 }
 //NSG
@@ -401,16 +415,13 @@ module routeTable 'br/public:avm/res/network/route-table:0.2.1' = {
 }
 
 //Spokes
-//condition ? valueIfTrue : valueIfFalse
-//1=prod
-//AppServicePlan
 module applicationInsights 'br/public:avm/res/insights/component:0.1.2' = [for spokeType in prodOrDev: {
   name:'${spokeType}appInsightsDeployment'
   params:{
     name:'${(spokeType==0) ? 'prod' : 'dev'}-${location}-aSInsights'
     location:location
     tags:(spokeType==0) ? prodTag : devTag
-    workspaceResourceId:logAnalyticsWorkspace.outputs.id
+    workspaceResourceId:logAnalyticsWorkspace.outputs.resourceId 
     kind:'web'
     applicationType: 'web'
   }
@@ -446,7 +457,7 @@ module appService 'br/public:avm/res/web/site:0.2.0' =  [for spokeType in prodOr
           }
         ]
         name: 'customSetting'
-        workspaceResourceId: logAnalyticsWorkspace.outputs.id
+        workspaceResourceId: logAnalyticsWorkspace.outputs.resourceId 
       }
     ]
     siteConfig:{
@@ -474,10 +485,12 @@ module appService 'br/public:avm/res/web/site:0.2.0' =  [for spokeType in prodOr
     }
     privateEndpoints: [
       {
+        name:(spokeType==0) ? 'private-endpoint-${prodAppServiceName}' : 'private-endpoint-${devAppServiceName}'
         privateDnsZoneResourceIds: [
           appServicePrivateDnsZone.outputs.resourceId
         ]
         subnetResourceId: (spokeType==0) ? prodVnet.outputs.subnetResourceIds[0] : devVnet.outputs.subnetResourceIds[0]
+        customNetworkInterfaceName : (spokeType==0) ? 'pip-${prodAppServiceName}' : 'pip-${devAppServiceName}'
       }
     ]
   }
@@ -489,6 +502,9 @@ resource codeAppService 'Microsoft.Web/sites/sourcecontrols@2022-09-01' =[for sp
     isManualIntegration:true
     branch:'master'
   }
+  dependsOn:[
+    appService
+  ]
 }] //NEEDS TO BE CHANGE
 //SQL
 module sqlServer 'br/public:avm/res/sql/server:0.1.5' = [for spokeType in prodOrDev: {
@@ -508,15 +524,18 @@ module sqlServer 'br/public:avm/res/sql/server:0.1.5' = [for spokeType in prodOr
     ]
     privateEndpoints: [
       {
+        name:(spokeType==0) ? 'private-endpoint-${prodSQLServerName}' : 'private-endpoint-${devSQLServerName}'
         privateDnsZoneResourceIds: [
           sqlPrivateDnsZone.outputs.resourceId
         ]
         service: 'sqlServer'
         subnetResourceId: (spokeType==0) ? prodVnet.outputs.subnetResourceIds[1] : devVnet.outputs.subnetResourceIds[1]
+        customNetworkInterfaceName : (spokeType==0) ? 'pip-${prodSQLServerName}' : 'pip-${devSQLServerName}'
       }
     ]
   }
 }]
+//SA
 module storageAccount 'br/public:avm/res/storage/storage-account:0.5.0' = {
   name: 'storageAccountDeployment'
   params: {
@@ -526,20 +545,20 @@ module storageAccount 'br/public:avm/res/storage/storage-account:0.5.0' = {
     location:location
     privateEndpoints: [
       {
+        name:storageAccountPrivateEndpointName
         privateDnsZoneResourceIds: [
           storageAccountPrivateDnsZone.outputs.resourceId
         ]
         service: 'blob'
         subnetResourceId: prodVnet.outputs.subnetResourceIds[2]
+        customNetworkInterfaceName :'pip-${storageAccountName}'
       }
     ]
   }
 }
-
-
 // Hub
 //Bastion Code
-module bastionHost 'br/public:avm/res/network/bastion-host:0.1.1' = {
+module bastion 'br/public:avm/res/network/bastion-host:0.1.1' = {
   name:'bastionDeployment'
   params:{
     name: bastionName
@@ -552,5 +571,320 @@ module bastionHost 'br/public:avm/res/network/bastion-host:0.1.1' = {
       skuName: 'Standard'
       tags: hubTag
     }
+    skuName: 'Standard'
+  }
+}
+//Firewall Code
+/*
+module azureFirewall 'br/public:avm/res/network/azure-firewall:0.1.0' = {
+  name: 'firewallDeployment'
+  params: {
+    // Required parameters
+    name: firewallName
+    // Non-required parameters
+    location: location
+    hubIPAddresses:{
+      privateIPAddress: AzureFirewallPrivateIP
+    }
+    publicIPAddressObject: {
+      name: firewallPIPName
+      publicIPAllocationMethod: 'Static'
+      skuName: 'Standard'
+    }
+    tags:hubTag
+    vNetId: hubVnet.outputs.resourceId
+    firewallPolicyId:firewallPolicy.id
+    diagnosticSettings: [
+      {
+        metricCategories: [
+          {
+            category: 'AllMetrics'
+          }
+        ]
+        name: 'customSetting'
+        workspaceResourceId: logAnalyticsWorkspace.outputs.resourceId  
+      }
+    ]
+  }
+}
+*/
+module firewallPolicy 'br/public:avm/res/network/firewall-policy:0.1.0' = {
+  name:'firewallPolicyDeployment'
+  params:{
+    name: firewallPolicyName
+    tags:hubTag
+    location: location
+    ruleCollectionGroups: [
+      {
+        name: firewallRulesName
+        priority: 200
+        ruleCollections: [
+          {
+            action: {
+              type: 'Allow'
+            }
+            name: 'allowAllRule'
+            priority: 1100
+            ruleCollectionType: 'FirewallPolicyFilterRuleCollection'
+            rules: [
+              {
+                name:'Rule1'
+                ruleType:'NetworkRule'
+                ipProtocols:['Any']
+                sourceAddresses:['*']
+                destinationAddresses:['*']
+                destinationPorts:['*']
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
+//AppGateway
+/*
+module applicationGateway 'br:bicep/modules/network.application-gateway:1.0.0' = {
+  name:'appGatewayDeployment'
+  params: {
+    name: appGatewayName
+    tags:hubTag
+    location: location
+    backendAddressPools:[
+      {
+        name:'backendAddressPool'
+        properties:{
+          backendAddresses:[{
+            fqdn:'${prodAppServiceName}.azurewebsites.net'
+          }]
+        }
+      }
+    ]
+    backendHttpSettingsCollection:[
+      {
+        name:'backendHttpPort80'
+        properties:{
+          port:80
+          protocol:'Http'
+          pickHostNameFromBackendAddress:true
+        }
+      }
+    ]
+    frontendIPConfigurations:[
+      {
+        name:'appGatewayFrontendConfig'
+        properties:{
+          privateIPAllocationMethod: 'Dynamic'
+          publicIPAddress:{
+            id:appGatewayPIP.id
+          }
+        }
+      }
+    ]
+    frontendPorts:[
+      {
+        name:'frontendHttpPort80'
+        properties:{
+          port:80
+        }
+      }
+    ]
+    gatewayIPConfigurations:[
+      {
+        name:'appGatewayIPConfig'
+        properties:{
+          subnet:{
+            id:hubVnet.outputs.subnetResourceIds[0]
+          }
+        }
+      }
+    ]
+    httpListeners:[
+      {
+          name:'appGWHttpListener'
+          properties:{
+            frontendIPConfiguration:{
+              id:'${appgw_id}/frontendIPConfigurations/appGatewayFrontendConfig'
+            }
+            frontendPort:{
+              id:'${appgw_id}/frontendPorts/frontendHttpPort80'
+            }
+            protocol:'Http'
+          }
+      }
+    ]
+    requestRoutingRules:[
+      {
+        name:'appGWRoutingRule'
+        properties:{
+          ruleType:'Basic'
+          priority:110
+          httpListener:{
+            id:'${appgw_id}/httpListeners/appGWHttpListener'
+          }
+          backendAddressPool:{
+            id:'${appgw_id}/backendAddressPools/backendAddressPool'
+          }
+          backendHttpSettings:{
+            id:'${appgw_id}/backendHttpSettingsCollection/backendHttpPort80'
+          }
+
+        }
+      }
+    ]
+    sku:'Standard_v2'
+    autoscaleMinCapacity:1
+    autoscaleMaxCapacity:5
+  }
+}
+*/
+module appGatewayPIP 'br/public:avm/res/network/public-ip-address:0.2.2' = {
+  name:'appGatewayPIPDeployment'
+  params:{
+    name: appGatewayPIPName
+    location:location
+    skuName: 'Standard'
+    tags:hubTag
+    publicIPAllocationMethod:'Static'
+  }
+}
+//VPN GATEWAY
+//ADD
+//
+//
+
+//core
+module virtualMachine 'br/public:avm/res/compute/virtual-machine:0.2.1' = {
+  name:'VMDeployment'
+  params:{
+    adminUsername: adminUsername
+    adminPassword: adminPassword
+    computerName: vmComputerName
+    encryptionAtHost:false
+    imageReference: {
+      publisher: 'MicrosoftWindowsServer'
+      offer: 'WindowsServer'
+      sku: '2022-datacenter-azure-edition'
+      version: 'latest'
+    }
+    name: vmName
+    location:location
+    backupPolicyName: 'DefaultPolicy'
+    backupVaultName: recoveryServiceVaultName
+    backupVaultResourceGroup: RG
+    nicConfigurations: [
+      {
+        deleteOption: 'Delete'
+        ipConfigurations: [
+          {
+            name: 'ipconfig'
+            privateIPAllocationMethod: 'Static' 
+            privateIPAddress: vmNICIP
+            subnetResourceId: coreVnet.outputs.subnetResourceIds[0]
+          }
+        ]
+        nicSuffix: '-nic-01'
+      }
+    ]
+    osDisk: {
+      name: 'name'
+      caching: 'ReadWrite'
+      diskSizeGB: '128'
+      createOption: 'FromImage'
+      managedDisk:{
+        storageAccountType:'Standard_LRS'
+      }
+    }
+    osType: 'Windows'
+    vmSize: vmSize
+    extensionAzureDiskEncryptionConfig: {
+      enabled: true
+      settings: {
+        EncryptionOperation: 'EnableEncryption'
+        KeyVaultURL: encryptionKeyVault.outputs.uri
+        KeyVaultResourceId: encryptionKeyVault.outputs.resourceId
+        VolumeType: 'All'
+        ResizeOSDisk: false
+      }
+    }
+    extensionAntiMalwareConfig: {
+      enabled: true
+      settings: {
+        AntimalwareEnabled: 'true'
+        RealtimeProtectionEnabled: 'true'
+      }
+      tags:coreTag
+    }
+    extensionDependencyAgentConfig: {
+      enabled: true
+      tags:coreTag
+    }
+    extensionMonitoringAgentConfig: {
+      enabled: true
+      monitoringWorkspaceResourceId: logAnalyticsWorkspace.outputs.resourceId 
+      tags:coreTag
+    }
+  }
+}
+/*
+resource windowsVMGuestConfigExtension 'Microsoft.Compute/virtualMachines/extensions@2020-12-01' = {
+  parent: windowsVM
+  name: 'AzurePolicyforWindows'
+  tags:coreTag
+  location: RGLocation
+  properties: {
+    publisher: 'Microsoft.GuestConfiguration'
+    type: 'ConfigurationforWindows'
+    typeHandlerVersion: '1.0'
+    autoUpgradeMinorVersion: true
+    enableAutomaticUpgrade: true
+    settings: {}
+    protectedSettings: {}
+  }
+}
+//maybe need data collection rule
+*/
+//Key Vault
+module encryptionKeyVault 'br/public:avm/res/key-vault/vault:0.3.4' = {
+  name:'encryptionKeyVaultDeployment'
+  params:{
+    name:CoreEncryptKeyVaultName
+    tags:coreTag
+    location:location
+    enableRbacAuthorization: false
+    enableVaultForDeployment:true
+    enableVaultForDiskEncryption:true
+    enableVaultForTemplateDeployment:true
+    networkAcls:{
+      defaultAction:'Allow'
+      bypass:'AzureServices'
+    }
+    sku:'standard'
+    privateEndpoints: [
+      {
+        privateDnsZoneResourceIds: [
+          encryptKVPrivateDnsZone.outputs.resourceId
+        ]
+        service: 'vault'
+        subnetResourceId:  coreVnet.outputs.subnetResourceIds[1]
+        tags:coreTag
+      }
+    ]
+  }
+}
+
+//Hub Gateway
+module hubGateway 'br/public:avm/res/network/virtual-network-gateway:0.1.0' = {
+  name: 'hubGatewayDeployment'
+  params: {
+    gatewayType: 'Vpn'
+    name:'hubGateway-hub-${location}-001'
+    skuName: 'VpnGw2'
+    vNetResourceId: hubVnet.outputs.resourceId
+    location: location
+    gatewayPipName: 'pip-hubgateway-hub-${location}-001'
+    domainNameLabel:[
+      'hubgateway'
+    ]
   }
 }
