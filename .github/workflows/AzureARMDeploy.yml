@@ -13,18 +13,17 @@ jobs:
             - name: 'Login to Azure'
               uses: azure/login@v1
               with:
-                client-id: ${{ secrets.AZURE_CLIENT_ID }}
-                tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-                subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+                creds: ${{ secrets.AZURE_CREDENTIALS }}
             
             - name: 'Checkout source code'
               uses: actions/checkout@v2
-            
-            - name: 'Deploy ARM Template'
-              uses: azure/CLI@v1
+
+            - name: Deploy Bicep file
+              uses: azure/arm-deploy@v1
               with:
-                inlineScript: |
-                  az deployment group create \
-                  --resource-group ResourceGroupName \
-                  --template-file biceptemplate/main.bicep \
-                  --parameters biceptemplate/parameters.bicepparam
+                subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+                resourceGroupName: ${{ secrets.AZURE_RG }}
+                template: ./biceptemplate/main.bicep
+                parameters: ./biceptemplate/parameters.bicepparam
+                failOnStdErr: false
+                
