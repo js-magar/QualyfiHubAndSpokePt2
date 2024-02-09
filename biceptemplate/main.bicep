@@ -39,7 +39,7 @@ param coreServicesTag object
 
 var RG = resourceGroup().name
 var CoreSecVaultName='keyvaultname'
-var RandString='jash'
+var RandString=substring(uniqueString(resourceGroup().id),0,5)
 //Hub
 var GatewaySubnetAddress = '${hubVnetAddressPrefix}.1.0/24'
 var AppgwSubnetAddress = '${hubVnetAddressPrefix}.2.0/24'
@@ -416,7 +416,7 @@ module routeTable 'br/public:avm/res/network/route-table:0.2.1' = {
 
 //Spokes
 module applicationInsights 'br/public:avm/res/insights/component:0.1.2' = [for spokeType in prodOrDev: {
-  name:'${spokeType}appInsightsDeployment'
+  name:'${(spokeType==0) ? 'prod' : 'dev'}AppInsightsDeployment'
   params:{
     name:'${(spokeType==0) ? 'prod' : 'dev'}-${location}-aSInsights'
     location:location
@@ -427,7 +427,7 @@ module applicationInsights 'br/public:avm/res/insights/component:0.1.2' = [for s
   }
 }]
 module appServicePlan 'br/public:avm/res/web/serverfarm:0.1.0' = [for spokeType in prodOrDev: {
-  name: '${spokeType}AppServicePlanDeployment'
+  name: '${(spokeType==0) ? 'prod' : 'dev'}AppServicePlanDeployment'
   params:{
     name: (spokeType==0) ? prodAppServicePlanName : devAppServicePlanName
     location:location
@@ -441,7 +441,7 @@ module appServicePlan 'br/public:avm/res/web/serverfarm:0.1.0' = [for spokeType 
   }
 }]
 module appService 'br/public:avm/res/web/site:0.2.0' =  [for spokeType in prodOrDev: {
-  name: '${spokeType}AppServiceDeployment'
+  name: '${(spokeType==0) ? 'prod' : 'dev'}AppServiceDeployment'
   params:{
     name:(spokeType==0) ? prodAppServiceName : devAppServiceName
     kind:'app'
@@ -508,7 +508,7 @@ resource codeAppService 'Microsoft.Web/sites/sourcecontrols@2022-09-01' =[for sp
 }] //NEEDS TO BE CHANGE
 //SQL
 module sqlServer 'br/public:avm/res/sql/server:0.1.5' = [for spokeType in prodOrDev: {
-  name:'${spokeType}SQLServer'
+  name:'${(spokeType==0) ? 'prod' : 'dev'}SQLServer'
   params:{
     name: (spokeType==0) ? prodSQLServerName : devSQLServerName
     administratorLogin:adminUsername
@@ -878,7 +878,7 @@ module hubGateway 'br/public:avm/res/network/virtual-network-gateway:0.1.0' = {
   name: 'hubGatewayDeployment'
   params: {
     gatewayType: 'Vpn'
-    name:'hubGateway-hub-${location}-001'
+    name:'hubgateway-hub-${location}-001'
     skuName: 'VpnGw2'
     vNetResourceId: hubVnet.outputs.resourceId
     location: location
