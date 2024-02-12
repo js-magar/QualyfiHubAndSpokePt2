@@ -1,6 +1,6 @@
 //All parameters defined in PARAMETERS file.
 param location string
-param name string
+param CoreSecVaultName string
 param GatewaySubnetName string
 param AppgwSubnetName string
 param AzureFirewallSubnetName string
@@ -38,7 +38,6 @@ param devTag object
 param coreServicesTag object
 
 var RG = resourceGroup().name
-var CoreSecVaultName='keyvaultname'
 var RandString=substring(uniqueString(resourceGroup().id),0,5)
 //Hub
 var GatewaySubnetAddress = '${hubVnetAddressPrefix}.1.0/24'
@@ -64,7 +63,7 @@ var vmSize = 'Standard_D2S_v3'
 var vmNICName = 'nic-core-${location}-001'
 var vmNICIP = '10.20.1.20'
 var vmComputerName = 'coreComputer'
-var CoreEncryptKeyVaultName = 'kv-encrypt-core-jash'
+var CoreEncryptKeyVaultName = 'kv-encrypt-core-${RandString}'
 //Spoke
 var appServiceSubnetName ='AppSubnet'
 var SQLServerSubnetName ='SqlSubnet'
@@ -80,27 +79,21 @@ var prodSQLDatabaseName = 'sqldb-prod-${location}-001-${RandString}'
 var storageAccountName = 'stprod001${RandString}'
 var appServiceRepoURL = 'https://github.com/Azure-Samples/dotnetcore-docs-hello-world'
 var storageAccountPrivateEndpointName ='private-endpoint-${storageAccountName}'
-
 //KV
-//resource keyVault 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
-//  name: CoreSecVaultName
-//}
+resource coreSecretVault 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
+  name: CoreSecVaultName
+}
 //RSV
-/*
 module recoveryServiceVaults './ResourceModules/modules/recovery-services/vault/main.bicep' ={
-//'br:bicep/modules/recovery-services.vault:1.0.0' = { //CARML
+  //'br:bicep/modules/recovery-services.vault:1.0.0' = { //CARML
   name:recoveryServiceVaultName
   params: {
-    managedIdentities: {
-      systemAssigned: true
-    }
     name:recoveryServiceVaultName
     location:location
     tags:coreServicesTag
     publicNetworkAccess:'Disabled'
   }
 }
-*/
 //log analytics
 module logAnalyticsWorkspace 'br/public:avm/res/operational-insights/workspace:0.3.1' = { //MODULES
   name: 'logAnalyticsDeployment'
@@ -696,7 +689,7 @@ module applicationGateway  './ResourceModules/modules/network/application-gatewa
         name:'appGatewayIPConfig'
         properties:{
           subnet:{
-            id:hubVnet.outputs.subnetResourceIds[0]
+            id:hubVnet.outputs.subnetResourceIds[1]
           }
         }
       }
@@ -750,16 +743,27 @@ module appGatewayPIP 'br/public:avm/res/network/public-ip-address:0.2.2' = {
   }
 }
 //VPN GATEWAY
-//ADD
-//
-//
-
+//Hub Gateway
+module hubGateway 'br/public:avm/res/network/virtual-network-gateway:0.1.0' = {
+  name: 'hubGatewayDeployment'
+  params: {
+    gatewayType: 'Vpn'
+    name:'hubgateway-hub-${location}-001'
+    skuName: 'VpnGw2'
+    vNetResourceId: hubVnet.outputs.resourceId
+    location: location
+    gatewayPipName: 'pip-hubgateway-hub-${location}-001'
+    domainNameLabel:[
+      'hubgateway'
+    ]
+  }
+}
 //core
 module virtualMachine 'br/public:avm/res/compute/virtual-machine:0.2.1' = {
   name:'VMDeployment'
   params:{
-    adminUsername: adminUsername
-    adminPassword: adminPassword
+    adminUsername:  coreSecretVault.getSecret('VMAdminUsername')
+    adminPassword: coreSecretVault.getSecret('VMAdminPassword')
     computerName: vmComputerName
     encryptionAtHost:false
     imageReference: {
@@ -870,22 +874,6 @@ module encryptionKeyVault 'br/public:avm/res/key-vault/vault:0.3.4' = {
         subnetResourceId:  coreVnet.outputs.subnetResourceIds[1]
         tags:coreTag
       }
-    ]
-  }
-}
-
-//Hub Gateway
-module hubGateway 'br/public:avm/res/network/virtual-network-gateway:0.1.0' = {
-  name: 'hubGatewayDeployment'
-  params: {
-    gatewayType: 'Vpn'
-    name:'hubgateway-hub-${location}-001'
-    skuName: 'VpnGw2'
-    vNetResourceId: hubVnet.outputs.resourceId
-    location: location
-    gatewayPipName: 'pip-hubgateway-hub-${location}-001'
-    domainNameLabel:[
-      'hubgateway'
     ]
   }
 }
