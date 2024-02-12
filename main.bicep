@@ -86,16 +86,16 @@ var storageAccountPrivateEndpointName ='private-endpoint-${storageAccountName}'
 //  name: CoreSecVaultName
 //}
 //RSV
-/*
-module recoveryServiceVaults 'br:bicep/modules/recovery-services.vault:1.0.0' = { //CARML
+module recoveryServiceVaults './ResourceModules/modules/recovery-services/vault/main.bicep' ={
+//'br:bicep/modules/recovery-services.vault:1.0.0' = { //CARML
   name:recoveryServiceVaultName
   params: {
+    name:recoveryServiceVaultName
     location:location
     tags:coreServicesTag
     publicNetworkAccess:'Disabled'
   }
 }
-*/
 //log analytics
 module logAnalyticsWorkspace 'br/public:avm/res/operational-insights/workspace:0.3.1' = { //MODULES
   name: 'logAnalyticsDeployment'
@@ -575,8 +575,7 @@ module bastion 'br/public:avm/res/network/bastion-host:0.1.1' = {
   }
 }
 //Firewall Code
-/*
-module azureFirewall 'br/public:avm/res/network/azure-firewall:0.1.0' = {
+module azureFirewall './ResourceModules/modules/network/azure-firewall/main.bicep' = {
   name: 'firewallDeployment'
   params: {
     // Required parameters
@@ -593,7 +592,7 @@ module azureFirewall 'br/public:avm/res/network/azure-firewall:0.1.0' = {
     }
     tags:hubTag
     vNetId: hubVnet.outputs.resourceId
-    firewallPolicyId:firewallPolicy.id
+    firewallPolicyId:firewallPolicy.outputs.resourceId
     diagnosticSettings: [
       {
         metricCategories: [
@@ -607,7 +606,6 @@ module azureFirewall 'br/public:avm/res/network/azure-firewall:0.1.0' = {
     ]
   }
 }
-*/
 module firewallPolicy 'br/public:avm/res/network/firewall-policy:0.1.0' = {
   name:'firewallPolicyDeployment'
   params:{
@@ -643,8 +641,7 @@ module firewallPolicy 'br/public:avm/res/network/firewall-policy:0.1.0' = {
   }
 }
 //AppGateway
-/*
-module applicationGateway 'br:bicep/modules/network.application-gateway:1.0.0' = {
+module applicationGateway  './ResourceModules/modules/network/application-gateway/main.bicep' = {
   name:'appGatewayDeployment'
   params: {
     name: appGatewayName
@@ -676,7 +673,7 @@ module applicationGateway 'br:bicep/modules/network.application-gateway:1.0.0' =
         properties:{
           privateIPAllocationMethod: 'Dynamic'
           publicIPAddress:{
-            id:appGatewayPIP.id
+            id:appGatewayPIP.outputs.resourceId
           }
         }
       }
@@ -737,7 +734,6 @@ module applicationGateway 'br:bicep/modules/network.application-gateway:1.0.0' =
     autoscaleMaxCapacity:5
   }
 }
-*/
 module appGatewayPIP 'br/public:avm/res/network/public-ip-address:0.2.2' = {
   name:'appGatewayPIPDeployment'
   params:{
