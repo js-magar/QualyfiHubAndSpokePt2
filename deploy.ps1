@@ -22,9 +22,9 @@ $CoreSecretsKeyVaultName = "kv-secret-core-jash-001"
 
 #Key Vault Properties|	
 $VMAdminUsernameP = RandomiseString 
-$VMAdminPasswordP = RandomiseString 16 "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz&#$%?!1234567890"
+$VMAdminPasswordP = RandomiseString 16 
 $SQLAdminUsernameP = RandomiseString 
-$SQLAdminPasswordP = RandomiseString 16 "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz&#$%?!1234567890"
+$SQLAdminPasswordP = RandomiseString 16 
 Write-Output "Virtual Machine Admin Username : $VMAdminUsernameP"
 Write-Output "Virtual Machine Admin Password : $VMAdminPasswordP"
 Write-Output "SQL Admin Password : $SQLAdminUsernameP"
@@ -43,9 +43,9 @@ if (-not $spExists) {
 #Deploy Keyvault
 az keyvault create --name $CoreSecretsKeyVaultName --resource-group $RG --location $Location --enabled-for-template-deployment true --tags $CoreTags
 #Set Secrets
-az keyvault secret set --name 'VMAdminUsername' --vault-name $CoreSecretsKeyVaultName --value $VMAdminUsernameP #(SecureString $VMAdminUsernameP)
-az keyvault secret set --name 'VMAdminPassword' --vault-name $CoreSecretsKeyVaultName --value $VMAdminPasswordP #(SecureString $VMAdminPasswordP)
-az keyvault secret set --name 'SQLAdminUsername' --vault-name $CoreSecretsKeyVaultName --value $SQLAdminUsernameP #(SecureString $SQLAdminUsernameP)
-az keyvault secret set --name 'SQLAdminPassword' --vault-name $CoreSecretsKeyVaultName --value $SQLAdminPasswordP #(SecureString $SQLAdminPasswordP)
+az keyvault secret set --name 'VMAdminUsername' --vault-name $CoreSecretsKeyVaultName --value "$VMAdminUsernameP" #(SecureString $VMAdminUsernameP)
+az keyvault secret set --name 'VMAdminPassword' --vault-name $CoreSecretsKeyVaultName --value "$VMAdminPasswordP" #(SecureString $VMAdminPasswordP)
+az keyvault secret set --name 'SQLAdminUsername' --vault-name $CoreSecretsKeyVaultName --value "$SQLAdminUsernameP" #(SecureString $SQLAdminUsernameP)
+az keyvault secret set --name 'SQLAdminPassword' --vault-name $CoreSecretsKeyVaultName --value "$SQLAdminPasswordP" #(SecureString $SQLAdminPasswordP)
 
 #az deployment group create --resource-group $RG --template-file biceptemplate/main.bicep --parameters biceptemplate/parameters.bicepparam

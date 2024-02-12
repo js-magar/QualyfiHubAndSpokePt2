@@ -165,14 +165,14 @@ module coreVnet 'br/public:avm/res/network/virtual-network:0.1.1' = {
       {
         name: vmSubetName 
         addressPrefix: vmSubnetAddress
-        networkSecurityGroup:{  id: defaultNSG.outputs.resourceId }
-        routeTable:{id:routeTable.outputs.resourceId}
+        networkSecurityGroupResourceId: defaultNSG.outputs.resourceId
+        routeTableResourceId: routeTable.outputs.resourceId
       }
       {
         name: kvSubetName
         addressPrefix: kvSubnetAddress
-        networkSecurityGroup:{  id: defaultNSG.outputs.resourceId }
-        routeTable:{id:routeTable.outputs.resourceId}
+        networkSecurityGroupResourceId: defaultNSG.outputs.resourceId
+        routeTableResourceId: routeTable.outputs.resourceId
       }
     ]
   }
@@ -201,14 +201,14 @@ module devVnet 'br/public:avm/res/network/virtual-network:0.1.1' = {
       {
         name: appServiceSubnetName
         addressPrefix: '${devVnetAddressPrefix}.1.0/24'
-        networkSecurityGroup:{  id: defaultNSG.outputs.resourceId }
-        routeTable:{id:routeTable.outputs.resourceId}
+        networkSecurityGroupResourceId: defaultNSG.outputs.resourceId
+        routeTableResourceId: routeTable.outputs.resourceId
       }
       {
         name: SQLServerSubnetName
         addressPrefix: '${devVnetAddressPrefix}.2.0/24'
-        networkSecurityGroup:{  id: defaultNSG.outputs.resourceId }
-        routeTable:{id:routeTable.outputs.resourceId}
+        networkSecurityGroupResourceId: defaultNSG.outputs.resourceId
+        routeTableResourceId: routeTable.outputs.resourceId
       }
     ]
   }
@@ -237,20 +237,20 @@ module prodVnet 'br/public:avm/res/network/virtual-network:0.1.1' = {
       {
         name: appServiceSubnetName
         addressPrefix: '${prodVnetAddressPrefix}.1.0/24'
-        networkSecurityGroup:{  id: defaultNSG.outputs.resourceId }
-        routeTable:{id:routeTable.outputs.resourceId}
+        networkSecurityGroupResourceId: defaultNSG.outputs.resourceId
+        routeTableResourceId: routeTable.outputs.resourceId
       }
       {
         name: SQLServerSubnetName
         addressPrefix: '${prodVnetAddressPrefix}.2.0/24'
-        networkSecurityGroup:{  id: defaultNSG.outputs.resourceId }
-        routeTable:{id:routeTable.outputs.resourceId}
+        networkSecurityGroupResourceId: defaultNSG.outputs.resourceId
+        routeTableResourceId: routeTable.outputs.resourceId
       }
       {
         name: SASubnetName
         addressPrefix: '${prodVnetAddressPrefix}.3.0/24'
-        networkSecurityGroup:{  id: defaultNSG.outputs.resourceId }
-        routeTable:{id:routeTable.outputs.resourceId}
+        networkSecurityGroupResourceId: defaultNSG.outputs.resourceId
+        routeTableResourceId: routeTable.outputs.resourceId
       }
     ]
   }
