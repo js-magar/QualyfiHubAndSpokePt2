@@ -509,8 +509,8 @@ module sqlServer 'br/public:avm/res/sql/server:0.1.5' = [for spokeType in prodOr
   name:'${(spokeType==0) ? 'prod' : 'dev'}SQLServer'
   params:{
     name: (spokeType==0) ? prodSQLServerName : devSQLServerName
-    administratorLogin: 'SQLAdminUsername'
-    administratorLoginPassword:coreSecretVault.getSecret('SQLAdminPassword')
+    administratorLogin: adminUsername
+    administratorLoginPassword:adminPassword
     location:location
     databases: [
       {
@@ -759,6 +759,17 @@ module hubGateway 'br/public:avm/res/network/virtual-network-gateway:0.1.0' = {
   }
 }
 //core
+/*
+resource windowsVMBackup 'Microsoft.RecoveryServices/vaults/backupFabrics/protectionContainers/protectedItems@2023-04-01' ={
+  name:'${recoveryServiceVaultName}/Azure/iaasvmcontainer;iaasvmcontainerv2;${resourceGroup().name};${vmName}/vm;iaasvmcontainerv2;${resourceGroup().name};${vmName}'
+  tags:coreTag
+  properties: {
+    protectedItemType: 'Microsoft.Compute/virtualMachines'
+    policyId: '${recoveryServiceVaults.id}/backupPolicies/DefaultPolicy'
+    sourceResourceId: windowsVM.id
+  }
+}
+*/
 module virtualMachine 'br/public:avm/res/compute/virtual-machine:0.2.1' = {
   name:'VMDeployment'
   params:{
@@ -775,8 +786,8 @@ module virtualMachine 'br/public:avm/res/compute/virtual-machine:0.2.1' = {
     name: vmName
     location:location
     backupPolicyName: 'DefaultPolicy'
-    backupVaultName: recoveryServiceVaultName
-    backupVaultResourceGroup: RG
+    backupVaultName: recoveryServiceVaults.outputs.name
+    backupVaultResourceGroup: recoveryServiceVaults.outputs.resourceGroupName
     nicConfigurations: [
       {
         deleteOption: 'Delete'
