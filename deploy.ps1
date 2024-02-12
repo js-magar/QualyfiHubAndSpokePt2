@@ -40,9 +40,9 @@ az ad sp create-for-rbac --name $SPName --role owner --scopes $ScopeName --json-
 #Deploy Keyvault
 az keyvault create --name $CoreSecretsKeyVaultName --resource-group $RG --location $Location --enabled-for-template-deployment true --tags $CoreTags
 #Set Secrets
-az keyvault secret set --name 'VMAdminUsername' --vault-name $CoreSecretsKeyVaultName --value (SecureString $VMAdminUsernameP)
-az keyvault secret set --name 'VMAdminPassword' --vault-name $CoreSecretsKeyVaultName --value (SecureString $VMAdminPasswordP)
-az keyvault secret set --name 'SQLAdminUsername' --vault-name $CoreSecretsKeyVaultName --value (SecureString $SQLAdminUsernameP)
-az keyvault secret set --name 'SQLAdminPassword' --vault-name $CoreSecretsKeyVaultName --value (SecureString $SQLAdminPasswordP)
+az keyvault secret set --name 'VMAdminUsername' --vault-name $CoreSecretsKeyVaultName --value $VMAdminUsernameP #(SecureString $VMAdminUsernameP)
+az keyvault secret set --name 'VMAdminPassword' --vault-name $CoreSecretsKeyVaultName --value $VMAdminPasswordP #(SecureString $VMAdminPasswordP)
+az keyvault secret set --name 'SQLAdminUsername' --vault-name $CoreSecretsKeyVaultName --value $SQLAdminUsernameP #(SecureString $SQLAdminUsernameP)
+az keyvault secret set --name 'SQLAdminPassword' --vault-name $CoreSecretsKeyVaultName --value $SQLAdminPasswordP #(SecureString $SQLAdminPasswordP)
 
 #az deployment group create --resource-group $RG --template-file biceptemplate/main.bicep --parameters biceptemplate/parameters.bicepparam

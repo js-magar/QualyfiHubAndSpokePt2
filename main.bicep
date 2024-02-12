@@ -509,8 +509,8 @@ module sqlServer 'br/public:avm/res/sql/server:0.1.5' = [for spokeType in prodOr
   name:'${(spokeType==0) ? 'prod' : 'dev'}SQLServer'
   params:{
     name: (spokeType==0) ? prodSQLServerName : devSQLServerName
-    administratorLogin:adminUsername
-    administratorLoginPassword:adminPassword
+    administratorLogin: 'SQLAdminUsername'
+    administratorLoginPassword:coreSecretVault.getSecret('SQLAdminPassword')
     location:location
     databases: [
       {
