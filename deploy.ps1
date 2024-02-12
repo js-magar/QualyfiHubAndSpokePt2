@@ -36,7 +36,10 @@ az account set --subscription $SUB
 az group create -l eastus -n $RG
 $SPName= "sp-github-actions-landing-zone-jash"
 $ScopeName= "/subscriptions/$SUB/resourceGroups/$RG"
-#az ad sp create-for-rbac --name $SPName --role owner --scopes $ScopeName --json-auth
+$SPExists = az ad sp list --display-name $SPName
+if (-not $spExists) {
+    az ad sp create-for-rbac --name $SPName --role owner --scopes $ScopeName --json-auth
+}
 #Deploy Keyvault
 az keyvault create --name $CoreSecretsKeyVaultName --resource-group $RG --location $Location --enabled-for-template-deployment true --tags $CoreTags
 #Set Secrets
