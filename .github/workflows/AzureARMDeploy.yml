@@ -23,6 +23,7 @@ jobs:
               run: |
                 git config --global url.https://github.com/.insteadOf git://github.com/
                 git clone https://github.com/Azure/ResourceModules.git
+                ls
             
             - name: Deploy Bicep file
               uses: azure/arm-deploy@v1

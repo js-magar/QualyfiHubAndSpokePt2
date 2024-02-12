@@ -86,16 +86,21 @@ var storageAccountPrivateEndpointName ='private-endpoint-${storageAccountName}'
 //  name: CoreSecVaultName
 //}
 //RSV
+/*
 module recoveryServiceVaults './ResourceModules/modules/recovery-services/vault/main.bicep' ={
 //'br:bicep/modules/recovery-services.vault:1.0.0' = { //CARML
   name:recoveryServiceVaultName
   params: {
+    managedIdentities: {
+      systemAssigned: true
+    }
     name:recoveryServiceVaultName
     location:location
     tags:coreServicesTag
     publicNetworkAccess:'Disabled'
   }
 }
+*/
 //log analytics
 module logAnalyticsWorkspace 'br/public:avm/res/operational-insights/workspace:0.3.1' = { //MODULES
   name: 'logAnalyticsDeployment'
