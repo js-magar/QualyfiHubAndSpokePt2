@@ -18,12 +18,16 @@ jobs:
             - name: 'Checkout source code'
               uses: actions/checkout@v2
 
+            - name: Check out the CARML repo
+              uses: actions/checkout@master
+              with:
+                repository: Azure/ResourceModules
+            
             - name: Deploy Bicep file
               uses: azure/arm-deploy@v1
               with:
                 subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
                 resourceGroupName: ${{ secrets.AZURE_RG }}
-                template: ./biceptemplate/main.bicep
-                parameters: ./biceptemplate/parameters.bicepparam
+                template: ./main.bicep
+                parameters: ./parameters.bicepparam
                 failOnStdErr: false
-                
