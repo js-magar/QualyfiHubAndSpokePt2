@@ -32,8 +32,8 @@ Write-Output "SQL Admin Password : $SQLAdminPasswordP"
 Write-Output "CoreSecretsKeyVaultName : $CoreSecretsKeyVaultName"
 
 az login
-az account set --subscription $SUB
-az group create -l eastus -n $RG
+az account set --subscription $SUB | Out-Null
+az group create -l eastus -n $RG | Out-Null
 $SPName= "sp-github-actions-landing-zone-jash"
 $ScopeName= "/subscriptions/$SUB/resourceGroups/$RG"
 $SPExists = az ad sp list --display-name $SPName
@@ -41,11 +41,11 @@ if (-not $spExists) {
     az ad sp create-for-rbac --name $SPName --role owner --scopes $ScopeName --json-auth
 }
 #Deploy Keyvault
-az keyvault create --name $CoreSecretsKeyVaultName --resource-group $RG --location $Location --enabled-for-template-deployment true --tags $CoreTags
+az keyvault create --name $CoreSecretsKeyVaultName --resource-group $RG --location $Location --enabled-for-template-deployment true --tags $CoreTags | Out-Null
 #Set Secrets
-az keyvault secret set --name 'VMAdminUsername' --vault-name $CoreSecretsKeyVaultName --value "$VMAdminUsernameP" #(SecureString $VMAdminUsernameP)
-az keyvault secret set --name 'VMAdminPassword' --vault-name $CoreSecretsKeyVaultName --value "$VMAdminPasswordP" #(SecureString $VMAdminPasswordP)
-az keyvault secret set --name 'SQLAdminUsername' --vault-name $CoreSecretsKeyVaultName --value "$SQLAdminUsernameP" #(SecureString $SQLAdminUsernameP)
-az keyvault secret set --name 'SQLAdminPassword' --vault-name $CoreSecretsKeyVaultName --value "$SQLAdminPasswordP" #(SecureString $SQLAdminPasswordP)
+az keyvault secret set --name 'VMAdminUsername' --vault-name $CoreSecretsKeyVaultName --value "$VMAdminUsernameP" | Out-Null #(SecureString $VMAdminUsernameP)
+az keyvault secret set --name 'VMAdminPassword' --vault-name $CoreSecretsKeyVaultName --value "$VMAdminPasswordP" | Out-Null #(SecureString $VMAdminPasswordP)
+az keyvault secret set --name 'SQLAdminUsername' --vault-name $CoreSecretsKeyVaultName --value "$SQLAdminUsernameP" | Out-Null#(SecureString $SQLAdminUsernameP)
+az keyvault secret set --name 'SQLAdminPassword' --vault-name $CoreSecretsKeyVaultName --value "$SQLAdminPasswordP" | Out-Null #(SecureString $SQLAdminPasswordP)
 
 #az deployment group create --resource-group $RG --template-file biceptemplate/main.bicep --parameters biceptemplate/parameters.bicepparam

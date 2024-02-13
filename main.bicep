@@ -79,6 +79,7 @@ var prodSQLDatabaseName = 'sqldb-prod-${location}-001-${RandString}'
 var storageAccountName = 'stprod001${RandString}'
 var appServiceRepoURL = 'https://github.com/Azure-Samples/dotnetcore-docs-hello-world'
 var storageAccountPrivateEndpointName ='private-endpoint-${storageAccountName}'
+var dataCollectionRuleName = 'MSVMI-vmDataCollectionRule'
 //KV
 resource coreSecretVault 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
   name: CoreSecVaultName
@@ -555,6 +556,7 @@ module storageAccount 'br/public:avm/res/storage/storage-account:0.5.0' = {
   }
 }
 // Hub
+/*
 //Bastion Code
 module bastion 'br/public:avm/res/network/bastion-host:0.1.1' = {
   name:'bastionDeployment'
@@ -572,6 +574,7 @@ module bastion 'br/public:avm/res/network/bastion-host:0.1.1' = {
     skuName: 'Standard'
   }
 }
+*/
 //Firewall Code
 module azureFirewall './ResourceModules/modules/network/azure-firewall/main.bicep' = {
   name: 'firewallDeployment'
@@ -638,6 +641,7 @@ module firewallPolicy 'br/public:avm/res/network/firewall-policy:0.1.0' = {
     ]
   }
 }
+
 //AppGateway
 module applicationGateway  './ResourceModules/modules/network/application-gateway/main.bicep' = {
   name:'appGatewayDeployment'
@@ -742,6 +746,7 @@ module appGatewayPIP 'br/public:avm/res/network/public-ip-address:0.2.2' = {
     publicIPAllocationMethod:'Static'
   }
 }
+/*
 //VPN GATEWAY
 //Hub Gateway
 module hubGateway 'br/public:avm/res/network/virtual-network-gateway:0.1.0' = {
@@ -758,18 +763,8 @@ module hubGateway 'br/public:avm/res/network/virtual-network-gateway:0.1.0' = {
     ]
   }
 }
-//core
-/*
-resource windowsVMBackup 'Microsoft.RecoveryServices/vaults/backupFabrics/protectionContainers/protectedItems@2023-04-01' ={
-  name:'${recoveryServiceVaultName}/Azure/iaasvmcontainer;iaasvmcontainerv2;${resourceGroup().name};${vmName}/vm;iaasvmcontainerv2;${resourceGroup().name};${vmName}'
-  tags:coreTag
-  properties: {
-    protectedItemType: 'Microsoft.Compute/virtualMachines'
-    policyId: '${recoveryServiceVaults.id}/backupPolicies/DefaultPolicy'
-    sourceResourceId: windowsVM.id
-  }
-}
 */
+//core
 module virtualMachine 'br/public:avm/res/compute/virtual-machine:0.2.1' = {
   name:'VMDeployment'
   params:{
@@ -842,24 +837,128 @@ module virtualMachine 'br/public:avm/res/compute/virtual-machine:0.2.1' = {
     }
   }
 }
-/*
-resource windowsVMGuestConfigExtension 'Microsoft.Compute/virtualMachines/extensions@2020-12-01' = {
-  parent: windowsVM
-  name: 'AzurePolicyforWindows'
-  tags:coreTag
-  location: RGLocation
-  properties: {
-    publisher: 'Microsoft.GuestConfiguration'
-    type: 'ConfigurationforWindows'
-    typeHandlerVersion: '1.0'
-    autoUpgradeMinorVersion: true
-    enableAutomaticUpgrade: true
-    settings: {}
-    protectedSettings: {}
+module dataCollectionRule 'br/public:avm/res/insights/data-collection-rule:0.1.1' = {
+  name: 'dataCollectionRuleDeployment'
+  params: {
+    // Required parameters
+    dataFlows: [
+      {
+        destinations: [
+          'VMInsightsPerf-Logs-Dest'//'azureMonitorMetrics-default'
+        ]
+        streams: [
+          'Microsoft-InsightsMetrics'
+        ]
+      }
+      {
+        destinations: [
+          logAnalyticsWorkspace.outputs.name
+        ]
+        streams: [
+          'Microsoft-Event'
+        ]
+      }
+    ]
+    dataSources: {
+      performanceCounters: [
+        {
+          counterSpecifiers: [
+            '\\LogicalDisk(_Total)\\% Disk Read Time'
+            '\\LogicalDisk(_Total)\\% Disk Time'
+            '\\LogicalDisk(_Total)\\% Disk Write Time'
+            '\\LogicalDisk(_Total)\\% Free Space'
+            '\\LogicalDisk(_Total)\\% Idle Time'
+            '\\LogicalDisk(_Total)\\Avg. Disk Queue Length'
+            '\\LogicalDisk(_Total)\\Avg. Disk Read Queue Length'
+            '\\LogicalDisk(_Total)\\Avg. Disk sec/Read'
+            '\\LogicalDisk(_Total)\\Avg. Disk sec/Transfer'
+            '\\LogicalDisk(_Total)\\Avg. Disk sec/Write'
+            '\\LogicalDisk(_Total)\\Avg. Disk Write Queue Length'
+            '\\LogicalDisk(_Total)\\Disk Bytes/sec'
+            '\\LogicalDisk(_Total)\\Disk Read Bytes/sec'
+            '\\LogicalDisk(_Total)\\Disk Reads/sec'
+            '\\LogicalDisk(_Total)\\Disk Transfers/sec'
+            '\\LogicalDisk(_Total)\\Disk Write Bytes/sec'
+            '\\LogicalDisk(_Total)\\Disk Writes/sec'
+            '\\LogicalDisk(_Total)\\Free Megabytes'
+            '\\Memory\\% Committed Bytes In Use'
+            '\\Memory\\Available Bytes'
+            '\\Memory\\Cache Bytes'
+            '\\Memory\\Committed Bytes'
+            '\\Memory\\Page Faults/sec'
+            '\\Memory\\Pages/sec'
+            '\\Memory\\Pool Nonpaged Bytes'
+            '\\Memory\\Pool Paged Bytes'
+            '\\Network Interface(*)\\Bytes Received/sec'
+            '\\Network Interface(*)\\Bytes Sent/sec'
+            '\\Network Interface(*)\\Bytes Total/sec'
+            '\\Network Interface(*)\\Packets Outbound Errors'
+            '\\Network Interface(*)\\Packets Received Errors'
+            '\\Network Interface(*)\\Packets Received/sec'
+            '\\Network Interface(*)\\Packets Sent/sec'
+            '\\Network Interface(*)\\Packets/sec'
+            '\\Process(_Total)\\Handle Count'
+            '\\Process(_Total)\\Thread Count'
+            '\\Process(_Total)\\Working Set'
+            '\\Process(_Total)\\Working Set - Private'
+            '\\Processor Information(_Total)\\% Privileged Time'
+            '\\Processor Information(_Total)\\% Processor Time'
+            '\\Processor Information(_Total)\\% User Time'
+            '\\Processor Information(_Total)\\Processor Frequency'
+            '\\System\\Context Switches/sec'
+            '\\System\\Processes'
+            '\\System\\Processor Queue Length'
+            '\\System\\System Up Time'
+          ]
+          name: 'VMInsightsPerfCounters'//'perfCounterDataSource60'
+          samplingFrequencyInSeconds: 60
+          streams: [
+            'Microsoft-InsightsMetrics'
+          ]
+        }
+      ]
+      windowsEventLogs: [
+        {
+          name: 'WindowsEventLogs'
+          streams: [
+            'Microsoft-Event'
+          ]
+          xPathQueries: [
+            'Application!*[System[(Level=1 or Level=2 or Level=3 or Level=4 or Level=0 or Level=5)]]'
+            'Security!*[System[(band(Keywords,13510798882111488))]]'
+            'System!*[System[(Level=1 or Level=2 or Level=3 or Level=4 or Level=0 or Level=5)]]'
+          ]
+        }
+      ]
+    }
+    destinations: {
+      azureMonitorMetrics: {
+        name: 'VMInsightsPerf-Logs-Dest'
+      }
+      logAnalytics: [
+        {
+          name: logAnalyticsWorkspace.outputs.name
+          workspaceResourceId: logAnalyticsWorkspace.outputs.resourceId //CVHECK
+        }
+      ]
+    }
+    name: dataCollectionRuleName
+    // Non-required parameters
+    description: 'Collecting Windows-specific performance counters and Windows Event Logs'
+    kind: 'Windows'
   }
 }
-//maybe need data collection rule
-*/
+module solution 'br/public:avm/res/operations-management/solution:0.1.1' = {
+  name: 'vmInsightsDeployment'
+  params: {
+    // Required parameters
+    logAnalyticsWorkspaceName: logAnalyticsWorkspace.outputs.name
+    name: 'AzureAutomation'
+    // Non-required parameters
+    product: 'OMSGallery/VMInsights'
+    publisher: 'Microsoft'
+  }
+}
 //Key Vault
 module encryptionKeyVault 'br/public:avm/res/key-vault/vault:0.3.4' = {
   name:'encryptionKeyVaultDeployment'
