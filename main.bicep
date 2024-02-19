@@ -37,7 +37,7 @@ param prodTag object
 param devTag object
 param coreServicesTag object
 
-var RG = resourceGroup().name
+//var RG = resourceGroup().name
 var RandString=substring(uniqueString(resourceGroup().id),0,5)
 //Hub
 var GatewaySubnetAddress = '${hubVnetAddressPrefix}.1.0/24'
@@ -60,7 +60,7 @@ var vmSubnetAddress = '${coreVnetAddressPrefix}.1.0/24'
 var kvSubnetAddress = '${coreVnetAddressPrefix}.2.0/24'
 var vmName ='vm-core-${location}-001'
 var vmSize = 'Standard_D2S_v3'
-var vmNICName = 'nic-core-${location}-001'
+//var vmNICName = 'nic-core-${location}-001'
 var vmNICIP = '10.20.1.20'
 var vmComputerName = 'coreComputer'
 var CoreEncryptKeyVaultName = 'kv-encrypt-core-${RandString}'
@@ -556,7 +556,6 @@ module storageAccount 'br/public:avm/res/storage/storage-account:0.5.0' = {
   }
 }
 // Hub
-/*
 //Bastion Code
 module bastion 'br/public:avm/res/network/bastion-host:0.1.1' = {
   name:'bastionDeployment'
@@ -574,7 +573,7 @@ module bastion 'br/public:avm/res/network/bastion-host:0.1.1' = {
     skuName: 'Standard'
   }
 }
-*/
+
 //Firewall Code
 module azureFirewall './ResourceModules/modules/network/azure-firewall/main.bicep' = {
   name: 'firewallDeployment'
@@ -746,7 +745,7 @@ module appGatewayPIP 'br/public:avm/res/network/public-ip-address:0.2.2' = {
     publicIPAllocationMethod:'Static'
   }
 }
-/*
+
 //VPN GATEWAY
 //Hub Gateway
 module hubGateway 'br/public:avm/res/network/virtual-network-gateway:0.1.0' = {
@@ -763,7 +762,6 @@ module hubGateway 'br/public:avm/res/network/virtual-network-gateway:0.1.0' = {
     ]
   }
 }
-*/
 //core
 module virtualMachine 'br/public:avm/res/compute/virtual-machine:0.2.1' = {
   name:'VMDeployment'
