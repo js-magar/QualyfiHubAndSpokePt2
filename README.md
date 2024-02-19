@@ -39,4 +39,4 @@ Success Criteria:
 - [] 9. Run the initial backup of the VM to the Recovery Services Vault - in the Recovery Services Vault in the portal, open the Backup Items blade and open the Virtual Machine items
 - [] 10. Delete and restore the VM
 - [ ] 11. Restore the VM as a clone with a new name in Azure and Windows (optional)
-- [] 12. Resolve the private DNS names from the VM to the private endpoints internal IP addresses - in the VM use the DOS command nslookup to lookup the private DNS
+- [] 12. Resolve the private DNS names from the VM to the private endpoints internal IP addresses - in the VM use the DOS command nslookup to lookup the private DNS.
