@@ -11,6 +11,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+    - name: Check out the CARML repo
+      run: |
+          git config --global url.https://github.com/.insteadOf git://github.com/
+          git clone https://github.com/Azure/ResourceModules.git
+          ls
     - name: Run Bicep linter
       run: az bicep build --file ./main.bicep
     - name: Run Bicep Param linter
