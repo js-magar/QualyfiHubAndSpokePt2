@@ -496,7 +496,7 @@ module appService 'br/public:avm/res/web/site:0.2.0' =  [for spokeType in prodOr
 module codeAppService './modules/sourceControl.bicep' =[for spokeType in prodOrDev: {
   name: '${(spokeType==0) ? 'prod' : 'dev'}AppSourceControlDeployment'
   params:{
-    name:(spokeType==0) ? '${prodAppServiceName}/web' : '${devAppServiceName}/web'
+    name:'web'
     repoUrl:appServiceRepoURL
     isManualIntegration:true
     branch:'master'
