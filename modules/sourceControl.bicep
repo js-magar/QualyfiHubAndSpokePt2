@@ -40,7 +40,7 @@ resource symbolicname 'Microsoft.Web/sites/sourcecontrols@2022-09-01' = {
   properties: {
     branch: branch
     deploymentRollbackEnabled: deploymentRollbackEnabled
-    gitHubActionConfiguration: gitHubActionConfiguration 
+    gitHubActionConfiguration: isGitHubAction ? gitHubActionConfiguration : null
     isGitHubAction: isGitHubAction
     isManualIntegration: isManualIntegration
     isMercurial: isMercurial

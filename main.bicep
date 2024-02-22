@@ -366,6 +366,29 @@ module encryptKVPrivateDnsZone 'br/public:avm/res/network/private-dns-zone:0.2.3
   params: {
     name: 'privatelink${environment().suffixes.keyvaultDns}'
     tags:coreServicesTag
+    virtualNetworkLinks: [
+      {
+        name: 'link-core'
+        location: 'global'
+        tags:coreServicesTag
+        registrationEnabled: false
+        virtualNetworkResourceId: coreVnet.outputs.resourceId
+      }
+      {
+        name: 'link-hub'
+        location: 'global'
+        tags: coreServicesTag
+        registrationEnabled: false
+        virtualNetworkResourceId: hubVnet.outputs.resourceId
+      }
+      {
+        name: 'link-prod'
+        location: 'global'
+        tags: coreServicesTag
+        registrationEnabled: false
+        virtualNetworkResourceId: prodVnet.outputs.resourceId
+      }
+    ]
   }
 }
 //Route Table
