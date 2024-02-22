@@ -361,7 +361,6 @@ module storageAccountPrivateDnsZone 'br/public:avm/res/network/private-dns-zone:
     ]
   }
 }
-
 module encryptKVPrivateDnsZone 'br/public:avm/res/network/private-dns-zone:0.2.3' = {
   name:'encryptKVPrivateDnsZone'
   params: {
@@ -412,7 +411,6 @@ module routeTable 'br/public:avm/res/network/route-table:0.2.1' = {
     ]
   }
 }
-
 //Spokes
 module applicationInsights 'br/public:avm/res/insights/component:0.1.2' = [for spokeType in prodOrDev: {
   name:'${(spokeType==0) ? 'prod' : 'dev'}AppInsightsDeployment'
@@ -494,17 +492,18 @@ module appService 'br/public:avm/res/web/site:0.2.0' =  [for spokeType in prodOr
     ]
   }
 }]
-resource codeAppService 'Microsoft.Web/sites/sourcecontrols@2022-09-01' =[for spokeType in prodOrDev: {
-  name:(spokeType==0) ? '${prodAppServiceName}/web' : '${devAppServiceName}/web'
-  properties:{
+
+module codeAppService './modules/sourceControl.bicep' =[for spokeType in prodOrDev: {
+  name: '${(spokeType==0) ? 'prod' : 'dev'}AppSourceControlDeployment'
+  params:{
+    name:(spokeType==0) ? '${prodAppServiceName}/web' : '${devAppServiceName}/web'
     repoUrl:appServiceRepoURL
     isManualIntegration:true
     branch:'master'
+    appServiceName:appService[spokeType].outputs.name
+    kind:'app'
   }
-  dependsOn:[
-    appService
-  ]
-}] //NEEDS TO BE CHANGE
+}] 
 //SQL
 module sqlServer 'br/public:avm/res/sql/server:0.1.5' = [for spokeType in prodOrDev: {
   name:'${(spokeType==0) ? 'prod' : 'dev'}SQLServer'
