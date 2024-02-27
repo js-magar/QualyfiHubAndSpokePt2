@@ -6,16 +6,25 @@ permissions:
   id-token: write
   contents: read
 
+env:
+  ENVIRONMENT: non-prod
+
 jobs: 
   lint:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+    #- name: Check out the CARML repo
+    #  run: |
+    #      git config --global url.https://github.com/.insteadOf git://github.com/
+    #      git clone https://github.com/Azure/ResourceModules.git
+    #      ls
     - name: Check out the CARML repo
-      run: |
-          git config --global url.https://github.com/.insteadOf git://github.com/
-          git clone https://github.com/Azure/ResourceModules.git
-          ls
+      uses: actions/checkout@v2
+      with:
+        repository: Azure/ResourceModules
+    - name: Check if CARML repo worked
+          run: ls
     - name: Run Bicep linter
       run: az bicep build --file ./main.bicep
     - name: Run Bicep Param linter
