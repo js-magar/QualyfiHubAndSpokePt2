@@ -23,6 +23,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: Azure/ResourceModules
+          submodules: true
       - name: Check if CARML repo worked
         run: | 
           ls
