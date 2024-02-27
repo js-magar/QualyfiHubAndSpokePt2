@@ -24,8 +24,8 @@ jobs:
         with:
           repository: Azure/ResourceModules
       - name: Check if CARML repo worked
-            run: | 
-              ls
+        run: | 
+          ls
       - name: Run Bicep linter
         run: az bicep build --file ./main.bicep
       - name: Run Bicep Param linter
